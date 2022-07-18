@@ -3,11 +3,14 @@ package choosePidor
 import (
 	"context"
 	_ "embed"
+
 	"math/rand"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/kapitan123/telegrofler/internal/storage"
+
+	"github.com/kapitan123/telegrofler/internal/faceFinder"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,6 +20,9 @@ var pidormarkPicture []byte
 
 //go:embed tinfoil.jpg
 var tinfoilPicture []byte
+
+//go:embed test.jpg
+var alesha []byte
 
 const commandName = "choosePidor"
 
@@ -30,6 +36,7 @@ type ChoosePidor struct {
 type (
 	watermarker interface {
 		Apply(bakground []byte, foreground []byte) ([]byte, error)
+		ApplyOnAxis(bakground []byte, foreground []byte, offsetx int, offsety int, lenght int) ([]byte, error)
 	}
 
 	messenger interface {
@@ -110,4 +117,18 @@ func chooseRandom(memebers []tgbotapi.ChatMember) tgbotapi.ChatMember {
 
 func (h *ChoosePidor) ShouldRun(message *tgbotapi.Message) bool {
 	return message.IsCommand() && message.Command() == commandName
+}
+
+func (h *ChoosePidor) ChoosePidorWithOffset(ctx context.Context, chatId int64, offx int, offy int) error {
+	x, y, length, err := faceFinder.FindMouth()
+	//x, y := 262.0814, 264.62463, 77.07892
+
+	ppic := alesha
+	markedPic, err := h.watermarker.ApplyOnAxis(ppic, pidormarkPicture, int(x)+offx, int(y)+offy, int(length))
+
+	if err != nil {
+		return err
+	}
+
+	return h.messenger.SendImg(chatId, markedPic, "pidor.png", "Pidor of the day is ") //+chosenOne.User.UserName)
 }
